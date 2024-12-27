@@ -73,3 +73,6 @@ Contributions are welcome! Feel free to submit issues or pull requests.
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
 
+## References
+
+https://www.grc.nasa.gov/www/k-12/airplane/socdrag.html
