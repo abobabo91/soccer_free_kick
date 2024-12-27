@@ -2,6 +2,12 @@
 
 This project simulates soccer free kicks with two scenarios: with and without air drag. The simulator calculates the required angle and velocity for the ball to reach the goal while visualizing the trajectory.
 
+## Notes
+- I got this idea after noticing how few free kicks actually turn into goals. With all the amazing football players out there, surely there's a way to score more often.
+- It’d be awesome to see this tested on an actual pitch. It doesn’t seem too hard—just need a camera to measure the angle and velocity, which should be easy to calculate.
+- The results seem decent, but of course, it’s not perfect—things like spin and other factors aren’t included.
+- Something feels off, though, because the two calculations don’t match exactly when drag is set to zero in the drag version.
+
 ## Features
 
 - **Free Kick with Drag**: Simulates realistic physics including air drag.
@@ -73,3 +79,6 @@ Contributions are welcome! Feel free to submit issues or pull requests.
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
 
+## References
+
+https://www.grc.nasa.gov/www/k-12/airplane/socdrag.html
