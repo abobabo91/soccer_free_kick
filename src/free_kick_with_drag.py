@@ -236,7 +236,6 @@ def equations(p):
 # -----------------------------
 
 
-
 if __name__ == "__main__":
     # variables
     wall_distance = 9   
