@@ -1,6 +1,6 @@
 # Free Kick Simulator
 
-This project simulates soccer free kicks with two scenarios: with and without air drag. The simulator calculates the required angle and velocity for the ball to reach the goal while visualizing the trajectory.
+This project simulates soccer free kicks with two scenarios: with and without air drag. The simulator calculates the optimal angle and velocity for the ball to reach the goal teh fastest while visualizing the trajectory.
 
 ## Notes
 - I got this idea after noticing how few free kicks actually turn into goals. With all the amazing football players out there, surely there's a way to score more often.
