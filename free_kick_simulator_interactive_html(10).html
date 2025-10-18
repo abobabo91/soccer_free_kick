@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Free Kick Simulator — Dual Mode (Marker Offset)</title>
+  <style>
+    :root { --bg:#0b1020; --panel:#111832; --accent:#5eead4; --accent2:#a78bfa; --accent3:#facc15; --text:#e6e9f2; --muted:#9aa3b2; }
+    body{margin:0;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;background:radial-gradient(1200px 700px at 80% -20%,#1e2749 0%,#0b1020 60%) fixed;color:var(--text)}
+    header{padding:20px}
+    h1{margin:0;font-weight:800}
+    main{display:grid;grid-template-columns:420px 1fr;gap:18px;padding:12px 20px}
+    @media (max-width: 980px){main{grid-template-columns:1fr}}
+    .card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+    .row{display:flex;align-items:center;gap:10px;margin:10px 0}
+    label{flex:1;color:var(--muted)}
+    input[type=range]{flex:2;accent-color:var(--accent)}
+    input[type=number],select{width:90px;background:#0f152b;color:var(--text);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:6px 8px}
+    .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+    .metric{background:#0f152b;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center}
+    canvas{width:100%;height:520px;border-radius:16px;background:#0f152b;border:1px solid rgba(255,255,255,.08)}
+    .links a{color:var(--accent2);text-decoration:none;margin-right:8px;font-size:13px}
+    .legend{position:absolute;top:10px;left:20px;font-size:13px;color:var(--muted)}
+    .legend span{margin-right:12px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚽ Free Kick Simulator — Dual Mode</h1>
+    <div class="links">Cd info:
+      <a href="https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/drag-on-a-soccer-ball/" target="_blank">soccer ball</a>
+      <a href="https://www.grc.nasa.gov/www/k-12/airplane/socforce.html" target="_blank">forces</a>
+      <a href="https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/flight-equations-with-drag/" target="_blank">equations</a>
+    </div>
+  </header>
+  <main>
+    <section class="card" style="position:sticky;top:12px">
+      <div class="row"><label>Mode</label>
+        <select id="mode">
+          <option value="nodrag">No drag (analytical)</option>
+          <option value="drag">With drag (numerical)</option>
+        </select>
+      </div>
+      <div class="row"><label>Goal distance (m)</label><input type="range" id="goal_distance" min="10" max="35" step="0.1" value="16"><input type="number" id="goal_distance_val" value="16"></div>
+      <div class="row"><label>Wall distance (m)</label><input type="range" id="wall_distance" min="5" max="20" step="0.1" value="9"><input type="number" id="wall_distance_val" value="9"></div>
+      <div class="row"><label>Wall height (m)</label><input type="range" id="wall_height" min="1.0" max="3.0" step="0.01" value="2.2"><input type="number" id="wall_height_val" value="2.2"></div>
+      <div class="row"><label>Drag coeff. Cd</label><input type="range" id="Cd" min="0.15" max="0.35" step="0.005" value="0.25"><input type="number" id="Cd_val" value="0.25"></div>
+      <hr>
+      <div class="row"><label>Manual angle (°)</label><input type="range" id="manual_angle" min="0" max="60" step="0.1" value="25"><input type="number" id="manual_angle_val" value="25"></div>
+      <div class="row"><label>Manual velocity (km/h)</label><input type="range" id="manual_velocity" min="20" max="150" step="0.5" value="80"><input type="number" id="manual_velocity_val" value="80"></div>
+
+      <div class="metrics">
+        <div class="metric"><div><b>Optimal Angle</b></div><div id="angle_opt">–</div></div>
+        <div class="metric"><div><b>Optimal Speed</b></div><div id="speed_opt">–</div></div>
+        <div class="metric"><div><b>Optimal Time to Goal</b></div><div id="tgoal_opt">–</div></div>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div><b>Manual Angle</b></div><div id="angle_man">–</div></div>
+        <div class="metric"><div><b>Manual Speed</b></div><div id="speed_man">–</div></div>
+        <div class="metric"><div><b>Manual Time to Goal</b></div><div id="tgoal_man">–</div></div>
+      </div>
+    </section>
+    <section class="card" style="position:relative">
+      <div class="legend"><span style="color:#5eead4">● Optimal</span><span style="color:#facc15">● Manual</span></div>
+      <canvas id="plot" width="1200" height="520"></canvas>
+    </section>
+  </main>
+  <script>
+    const ctx = document.getElementById('plot').getContext('2d');
+    const constants = { goal_height: 2.44, ball_d: 0.23, ball_r: 0.115, m: 0.43, g: 9.81, rho: 1.225 };
+
+    function drawScene(optPoints, manPoints){
+      const W = ctx.canvas.width, H = ctx.canvas.height;
+      ctx.clearRect(0,0,W,H);
+      const goalDist = +goal_distance.value, wallDist = +wall_distance.value, wallH = +wall_height.value;
+      const gh = constants.goal_height;
+      const allPts = [...(optPoints||[]), ...(manPoints||[])];
+      const maxX = Math.max(goalDist+2, ...allPts.map(p=>p.x||0));
+      const maxY = Math.max(gh+0.5, wallH+0.5, ...allPts.map(p=>p.y||0));
+      const kx = (W-100)/maxX, ky = (H-80)/maxY, k = Math.min(kx,ky);
+      const ox = 60, oy = H-40;
+      const X = x=>ox + x*k, Y = y=>oy - y*k;
+
+      ctx.strokeStyle='rgba(255,255,255,.2)';ctx.beginPath();ctx.moveTo(X(0),Y(0));ctx.lineTo(X(maxX),Y(0));ctx.stroke();
+      ctx.fillStyle='rgba(251,113,133,.55)';ctx.fillRect(X(wallDist)-3,Y(wallH),6,Y(0)-Y(wallH));
+      ctx.strokeStyle='#22c55e';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(X(goalDist),Y(0));ctx.lineTo(X(goalDist),Y(gh));ctx.lineTo(X(goalDist)+8,Y(gh));ctx.lineTo(X(goalDist)+8,Y(0));ctx.stroke();
+      const goesIn = gh - constants.ball_d;ctx.setLineDash([6,6]);ctx.strokeStyle='rgba(94,234,212,.85)';ctx.beginPath();ctx.moveTo(X(goalDist)-20,Y(goesIn));ctx.lineTo(X(goalDist)+30,Y(goesIn));ctx.stroke();ctx.setLineDash([]);
+
+      function drawPath(points,color,withMarkers=false){
+        if(!points||!points.length)return;
+        ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(X(points[0].x),Y(points[0].y));for(const p of points){ctx.lineTo(X(p.x),Y(p.y));}ctx.stroke();
+        if(withMarkers){
+          ctx.fillStyle=color==='#5eead4'?'rgba(94,234,212,.35)':'rgba(250,204,21,.35)';
+          const step=Math.max(3,Math.floor(points.length/30));
+          for(let i=0;i<points.length;i+=step){ctx.beginPath();ctx.arc(X(points[i].x),Y(points[i].y + constants.ball_r*1.1),constants.ball_r*k,0,Math.PI*2);ctx.fill();}
+        }
+      }
+      drawPath(optPoints,'#5eead4',true);
+      drawPath(manPoints,'#facc15',false);
+    }
+
+    function parabola(angleDeg,V0){
+      const B=+goal_distance.value;const g=constants.g;
+      const ang=angleDeg*Math.PI/180;const t=Math.tan(ang);const Vx=V0*Math.cos(ang);
+      const pts=[];for(let i=0;i<=200;i++){const x=B*i/200;const y=t*x-0.5*g*(x*x)/(Vx*Vx);pts.push({x,y});}
+      const tGoal=B/Vx;return{points:pts,tGoal};
+    }
+
+    function solveOptimal(){
+      const mode=modeEl.value;
+      if(mode==='nodrag'){
+        const A=+wall_distance.value,B=+goal_distance.value,H1=+wall_height.value,H2=constants.goal_height-constants.ball_d,g=constants.g;
+        if(!(B>A)||A<=0||B<=0)return null;
+        const D=-(g/2)*A*B*(B-A);
+        const t=(H1*B*B-H2*A*A)/(A*B*(B-A));
+        const u=(A*H2-B*H1)/D;if(u<=0)return null;
+        const Vx=1/Math.sqrt(u);const theta=Math.atan(t);const V=Vx/Math.cos(theta);
+        const pts=[];for(let i=0;i<=200;i++){const x=B*i/200;const y=t*x-0.5*g*(x*x)/(Vx*Vx);pts.push({x,y});}
+        return{angle:theta*180/Math.PI,speed:V*3.6,points:pts,tGoal:B/Vx};
+      }
+      return null;
+    }
+
+    function simulateManual(){
+      const ang=+manual_angle.value;const vms=manual_velocity.value/3.6;return parabola(ang,vms);
+    }
+
+    const modeEl=document.getElementById('mode');
+    const goal_distance=document.getElementById('goal_distance'),wall_distance=document.getElementById('wall_distance'),wall_height=document.getElementById('wall_height'),Cd=document.getElementById('Cd');
+    const vGoal=document.getElementById('goal_distance_val'),vWall=document.getElementById('wall_distance_val'),vHwall=document.getElementById('wall_height_val'),vCd=document.getElementById('Cd_val');
+    const manual_angle=document.getElementById('manual_angle'),manual_velocity=document.getElementById('manual_velocity'),vAngle=document.getElementById('manual_angle_val'),vVel=document.getElementById('manual_velocity_val');
+
+    function update(){
+      vGoal.value=goal_distance.value;vWall.value=wall_distance.value;vHwall.value=wall_height.value;vCd.value=Cd.value;vAngle.value=manual_angle.value;vVel.value=manual_velocity.value;
+      const opt=solveOptimal();const man=simulateManual();
+      document.getElementById('angle_opt').textContent=opt?opt.angle.toFixed(2)+'°':'–';
+      document.getElementById('speed_opt').textContent=opt?opt.speed.toFixed(1)+' km/h':'–';
+      document.getElementById('tgoal_opt').textContent=opt?opt.tGoal.toFixed(3)+' s':'–';
+      document.getElementById('angle_man').textContent=(+manual_angle.value).toFixed(2)+'°';
+      document.getElementById('speed_man').textContent=(+manual_velocity.value).toFixed(1)+' km/h';
+      document.getElementById('tgoal_man').textContent=man?man.tGoal.toFixed(3)+' s':'–';
+      drawScene(opt?.points,man?.points);
+    }
+
+    [goal_distance,wall_distance,wall_height,Cd,manual_angle,manual_velocity,modeEl].forEach(el=>el.addEventListener('input',update));
+    [vGoal,vWall,vHwall,vCd,vAngle,vVel].forEach(el=>el.addEventListener('input',e=>{const id=e.target.id.replace('_val','');document.getElementById(id).value=e.target.value;update();}));
+
+    update();
+  </script>
+</body>
+</html>
