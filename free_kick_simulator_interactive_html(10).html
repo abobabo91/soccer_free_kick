@@ -22,16 +22,29 @@
     .links a{color:var(--accent2);text-decoration:none;margin-right:8px;font-size:13px}
     .legend{position:absolute;top:10px;left:20px;font-size:13px;color:var(--muted)}
     .legend span{margin-right:12px}
+    .info-box {
+      margin-top: 12px;
+      background: rgba(94, 234, 212, 0.08);
+      border-left: 4px solid var(--accent);
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+    .info-box a {
+      color: var(--accent2);
+      text-decoration: none;
+    }
+    .info-box a:hover {
+      text-decoration: underline;
+    }
   </style>
+  
 </head>
 <body>
   <header>
     <h1>⚽ Free Kick Simulator — Dual Mode</h1>
-    <div class="links">Cd info:
-      <a href="https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/drag-on-a-soccer-ball/" target="_blank">soccer ball</a>
-      <a href="https://www.grc.nasa.gov/www/k-12/airplane/socforce.html" target="_blank">forces</a>
-      <a href="https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/flight-equations-with-drag/" target="_blank">equations</a>
-    </div>
+    <p class="subtitle">Use this simulator to see how a soccer ball travels toward the goal — with or without air drag. Change the kick angle, speed, and wall settings to see how the shot behaves.</p>
   </header>
   <main>
     <section class="card" style="position:sticky;top:12px">
@@ -147,5 +160,16 @@
 
     update();
   </script>
+  
+<div class="info-box">
+  <b>📘 Additional information on drag, forces, etc.</b><br>
+  <a href="https://www.grc.nasa.gov/www/k-12/airplane/socforce.html" target="_blank">Drag and Forces on a soccer ball</a> ·
+  <a href="https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/flight-equations-with-drag/" target="_blank">Equations</a>
+  <div class="note">
+    ⚙️ Goal physics: the ball still goes in if its bottom is about 2.25 m high —
+    calculated as 2.44 m (goal height) − 0.23 m (ball diameter), plus a little margin for bounce from the post; gravity = 9.81 m/s²
+  </div>
+</div>  
+  
 </body>
 </html>
